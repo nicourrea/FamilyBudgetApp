@@ -5,9 +5,12 @@ import random
 import io
 import csv
 from db import get_db_connection, insert_user, get_user_by_username, get_budget_categories
+from admin import admin_bp, is_hardcoded_admin
 
 app = Flask(__name__)
-app.secret_key = 'COP4521'  # Change this in production
+app.secret_key = 'COP4521'
+
+app.register_blueprint(admin_bp)
 
 # ========== Login Required Decorator ==========
 def login_required(f):
@@ -95,6 +98,16 @@ def login():
     if request.method == 'POST':
         username = request.form['username']
         password = request.form['password']
+	
+        # Check for hardcoded global admin first
+        if is_hardcoded_admin(username, password):
+            session['user_id'] = -1  # Special ID for hardcoded admin
+            session['username'] = username
+            session['role'] = 'admin'
+            session['family_id'] = None  # NULL for admin
+            flash("Logged in as global admin.")
+            return redirect(url_for('admin.admin_dashboard'))
+        
         user = get_user_by_username(username)
 
         if user and check_password_hash(user[2], password):
@@ -103,7 +116,10 @@ def login():
             session['role'] = user[3]
             session['family_id'] = user[4]
             flash("Logged in successfully.")
-            return redirect('/')
+            if user[3] == 'admin':
+                return redirect(url_for('admin.admin_dashboard'))
+            else:
+                return redirect('/')
 
         flash("Invalid username or password.")
     return render_template('login.html')
@@ -180,7 +196,7 @@ def delete_user(username):
 # ========== Uploading Files (CSVS) ==========
 
 @app.route('/open_file', methods=['GET', 'POST'])
-@role_required('parent')
+@role_required('parent') 
 def open_file():
     if request.method == 'POST':
         uploaded_file = request.files.get('file')
@@ -249,7 +265,7 @@ def open_expenses():
 def open_budget():
     return render_template('open_budget.html')
 
-# ========== New Category Page (Parents Only) ==========
+# ========== New Budget Page (Parents Only) ==========
 
 @app.route('/create_table', methods=['GET', 'POST'])
 @role_required('parent')
@@ -366,7 +382,7 @@ def view_category_expenses():
         cur.close()
         conn.close()
         
-# ========== Inline Edit Logic ==========        
+# ========== Inline Edit Logic for Budget ==========        
 @app.route('/update_table', methods=['POST'])
 @login_required
 def update_table():
@@ -402,7 +418,7 @@ def update_table():
         if conn:
             conn.close()
 
-# ========== Editing in JS ==========
+# ========== Editing/Deleting in Expenses ==========
 
 @role_required('parent')
 @app.route('/delete_expense', methods=['POST'])
@@ -584,4 +600,4 @@ def view_child_expenses():
 # ========== Main ==========
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    app.run(debug=True, host='0.0.0.0', port=5001)

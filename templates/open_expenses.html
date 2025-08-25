@@ -109,7 +109,7 @@
         const saveBtn = document.createElement("button");
         saveBtn.id = "saveChanges";
         saveBtn.dataset.table = "expenses";
-        saveBtn.textContent = "💾 Save All Edits";
+        saveBtn.textContent = "Save All Edits";
         saveBtn.className = "mx-auto mt-6 block bg-green-700 text-white px-6 py-3 rounded-lg shadow hover:bg-green-800 transition";
         saveBtn.onclick = () => sendUpdate("expenses");
         document.querySelector("main").appendChild(saveBtn);
